@@ -248,3 +248,15 @@ The system is designed to discourage unreliable behavior without immediately rem
 - **Expiration:** Allows drivers to recover their score and regain matching eligibility automatically over time.
 
 The central principle is that **penalties affect both ranking and eligibility, but only a reliability score below zero blocks a driver from matching.**
+
+## 9. Ranking Score (decides who gets matched)
+
+| Category | How it's computed | Default / seeded value |
+|---|---|---|
+| Rides completed (last 365 days) | Count of the driver's `COMPLETED` rides on ended, acknowledged route groups. Points come from a bracket table; the highest bracket reached applies (not cumulative). | Bracket comes from `rides-completed-points-bracket`. No code default, so 0 points if unset. |
+| Routes completed recently | Number of route groups completed in the last 7 days, multiplied by a per-route value. | `rides-recently-completed-points`, code default: 0. |
+| Location familiarity | Per pickup/dropoff location on the route where the driver has completed rides in the last year. | 50 points per location. |
+| Rider familiarity | Per rider on the route for whom the driver has completed a ride in the last year. | 200 points per rider in SQL (code default: 100). |
+| Gender preference | Flat bonus if the driver's gender matches a rider preference on the route. Skipped when the preference is enforced, because non-matching drivers are filtered out instead. | 125 points (enforcement defaults to on). |
+| Distance | The shortest distance among three possible reference points is used to determine the distance score. The tightest matching bracket determines the points. <br><br> **1. Service location:** The driver's saved home or service-area point, available whenever the driver has set one. <br> *Example:* The driver's service location is 6.5 miles from the pickup. <br><br> **2. Live location:** The last location reported by the driver's phone. Used only when the ride is **2 or more hours away**. The location must have been reported within the last 120 minutes and must not have expired. When the driver comes online, the app's fresh ping location is used; otherwise, the latest-location store is queried. <br> *Example:* The driver is at the gym, 2.8 miles from the pickup. <br><br> **3. Nearby ride-end:** Measures proximity to other routes the driver has claimed that end shortly **before** this route starts or start shortly **after** it ends. Time windows are configured by admins (60-minute code fallback), with a safety gap between routes. Cancelled routes are ignored. <br> - **Before case:** Distance from the previous route's end to this route's first stop. <br> - **After case:** Distance from this route's last stop to the next route's start. | SQL distance brackets: ≤3 mi = 100, ≤5 mi = 80, ≤8 mi = 50, ≤12 mi = 20. |
+| Reliability penalty | Subtracts the driver's active penalty points (see Section 2). | Negative points based on active penalties. |
